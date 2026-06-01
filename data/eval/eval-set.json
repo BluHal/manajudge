@@ -1,0 +1,122 @@
+[
+	{
+		"q": "Come funziona la priorità sullo stack?",
+		"expected_rules": ["117", "405", "608"],
+		"cards": []
+	},
+	{
+		"q": "Cosa sono le azioni basate sullo stato (state-based actions)?",
+		"expected_rules": ["704"],
+		"cards": []
+	},
+	{
+		"q": "La mia creatura con travolgere ha anche tocco letale: quanti danni devo assegnare alla creatura bloccante?",
+		"expected_rules": ["702.2", "702.19", "509.2"],
+		"cards": []
+	},
+	{
+		"q": "Se lancio Fulmine su una creatura con protezione dal rosso, cosa succede?",
+		"expected_rules": ["702.16"],
+		"cards": ["Lightning Bolt"]
+	},
+	{
+		"q": "Come si determina l'ordine dei layer per gli effetti che modificano le caratteristiche?",
+		"expected_rules": ["613"],
+		"cards": []
+	},
+	{
+		"q": "Cosa succede quando due abilità innescate vanno sullo stack contemporaneamente?",
+		"expected_rules": ["603.3"],
+		"cards": []
+	},
+	{
+		"q": "Come funziona l'attacco e la dichiarazione degli attaccanti?",
+		"expected_rules": ["508"],
+		"cards": []
+	},
+	{
+		"q": "Quando una creatura diventa bloccata e poi il bloccante viene rimosso, infligge comunque danno?",
+		"expected_rules": ["509", "510"],
+		"cards": []
+	},
+	{
+		"q": "Come funziona la riserva di mana e quando si svuota?",
+		"expected_rules": ["106", "500.4"],
+		"cards": []
+	},
+	{
+		"q": "Cosa significa che un permanente ha summoning sickness (debolezza da evocazione)?",
+		"expected_rules": ["302.6"],
+		"cards": []
+	},
+	{
+		"q": "Come si risolve una magia con bersagli illegali?",
+		"expected_rules": ["608.2"],
+		"cards": []
+	},
+	{
+		"q": "Cosa succede agli effetti di sostituzione quando si pesca da una libreria vuota?",
+		"expected_rules": ["104.3", "120.3"],
+		"cards": []
+	},
+	{
+		"q": "Come funziona l'abilità deathtouch (tocco letale)?",
+		"expected_rules": ["702.2"],
+		"cards": []
+	},
+	{
+		"q": "Come funziona lifelink (legame vitale)?",
+		"expected_rules": ["702.15"],
+		"cards": []
+	},
+	{
+		"q": "Cosa succede se controllo due effetti di sostituzione applicabili allo stesso evento?",
+		"expected_rules": ["616"],
+		"cards": []
+	},
+	{
+		"q": "Come funziona la fase di combattimento e i suoi passi?",
+		"expected_rules": ["506", "507"],
+		"cards": []
+	},
+	{
+		"q": "Quando un giocatore perde la partita per zero o meno punti vita?",
+		"expected_rules": ["104.3", "704.5a"],
+		"cards": []
+	},
+	{
+		"q": "Come funzionano le abilità attivate e come si lanciano?",
+		"expected_rules": ["602"],
+		"cards": []
+	},
+	{
+		"q": "Cosa succede quando un'aura non è più attaccata a nulla?",
+		"expected_rules": ["704.5", "303.4"],
+		"cards": []
+	},
+	{
+		"q": "Come si determina chi vince in caso di copia di una magia?",
+		"expected_rules": ["707"],
+		"cards": []
+	},
+	{
+		"q": "Come funziona flying (volare) e chi può bloccare una creatura con volare?",
+		"expected_rules": ["702.9"],
+		"cards": []
+	},
+	{
+		"q": "Cosa succede quando una creatura con indistruttibile subisce danno letale?",
+		"expected_rules": ["702.12"],
+		"cards": []
+	},
+	{
+		"q": "Come funziona la regola delle leggende (legend rule)?",
+		"expected_rules": ["704.5j"],
+		"cards": []
+	},
+	{
+		"q": "Posso rispondere a una magia con un'altra magia? Come funziona la finestra di priorità?",
+		"expected_rules": ["117", "601"],
+		"cards": []
+	}
+]
