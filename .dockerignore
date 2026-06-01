@@ -1,0 +1,18 @@
+node_modules
+.git
+.svelte-kit
+build
+.hf-cache
+
+# Segreti: mai nell'immagine (usa i secret di HF Spaces).
+.env
+.env.*
+
+# Sorgenti dati build-time: NON servono a runtime, il DB è già prefabbricato (data/judge.db).
+data/oracle_cards.json
+data/comprehensive-rules.txt
+data/*.db-wal
+data/*.db-shm
+
+.DS_Store
+Thumbs.db

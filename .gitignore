@@ -12,10 +12,11 @@ node_modules
 .DS_Store
 Thumbs.db
 
-# Data: downloaded sources + built DB are large / regenerable.
-# Keep the versioned eval set.
+# Data: downloaded sources are large / regenerable. Keep the versioned eval set,
+# and the prefabbricated DB (committed via Git LFS) needed by the HF Spaces deploy.
 /data/*
 !/data/eval/
+!/data/judge.db
 
 # Env
 .env
