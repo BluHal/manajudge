@@ -1,3 +1,13 @@
+---
+title: Manajudge
+emoji: ⚖️
+colorFrom: purple
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # ⚖️ manajudge
 
 AI tournament judge for **Magic: The Gathering**. A text chatbot that answers questions

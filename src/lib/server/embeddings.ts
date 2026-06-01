@@ -1,4 +1,9 @@
-import { pipeline, type FeatureExtractionPipeline } from '@huggingface/transformers';
+import { pipeline, env, type FeatureExtractionPipeline } from '@huggingface/transformers';
+
+// Cartella di cache del modello. In Docker (HF Spaces) la fissiamo con TRANSFORMERS_CACHE
+// così il modello "cotto" nell'immagine in fase di build viene ritrovato a runtime invece
+// di essere riscaricato a ogni avvio.
+if (process.env.TRANSFORMERS_CACHE) env.cacheDir = process.env.TRANSFORMERS_CACHE;
 
 /**
  * Modello di embedding multilingue (locale, gratuito). Mappa testo italiano e inglese
