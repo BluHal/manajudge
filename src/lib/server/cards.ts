@@ -11,6 +11,17 @@ export type Card = {
 	loyalty: string | null;
 };
 
+/** Un ruling ufficiale (Scryfall "Notes and Rules Information") attaccato a una carta. */
+export type Ruling = {
+	source: string | null;
+	published_at: string | null;
+	comment: string;
+};
+
+/** Tronca i singoli comment lunghi: valvola di sicurezza sul budget token (i rulings di
+ *  norma sono corti, scatta solo su carte iper-chiosate). */
+const MAX_COMMENT_LEN = 400;
+
 const COLS = 'oracle_id, name, mana_cost, type_line, oracle_text, power, toughness, loyalty';
 // I segnalini/token/emblemi condividono il nome con carte vere: vanno deprioritizzati.
 const TOKEN_LAYOUTS = "('token','double_faced_token','emblem','art_series')";
@@ -44,6 +55,20 @@ export function resolveCard(name: string): Card | undefined {
 	if (exact) return exact;
 	// AND (tutti i token presenti) è più preciso; OR come ripiego.
 	return ftsMatch(name, 'AND') ?? ftsMatch(name, 'OR');
+}
+
+/** Rulings di una carta, in ordine cronologico (come su Scryfall), comment troncati. */
+export function getRulings(oracleId: string): Ruling[] {
+	const rows = getDb()
+		.prepare(
+			`SELECT source, published_at, comment FROM rulings
+			 WHERE oracle_id = ? ORDER BY published_at ASC, rowid ASC`
+		)
+		.all(oracleId) as Ruling[];
+	return rows.map((r) => ({
+		...r,
+		comment: r.comment.length > MAX_COMMENT_LEN ? r.comment.slice(0, MAX_COMMENT_LEN) + ' […]' : r.comment
+	}));
 }
 
 /** Risolve una lista di nomi carta in record unici (per oracle_id). */
