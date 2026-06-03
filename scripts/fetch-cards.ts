@@ -1,6 +1,8 @@
 /**
  * Scarica il bulk `oracle_cards` di Scryfall (una carta di gioco unica per oracle id)
- * e popola la tabella `cards` + l'indice full-text `cards_fts`.
+ * e popola la tabella `cards` + l'indice full-text `cards_fts`. Subito dopo scarica anche
+ * il bulk `rulings` (le note "Notes and Rules Information" delle pagine carta) e popola la
+ * tabella `rulings`: carte e rulings restano così sempre allineati alla stessa release.
  *
  * Uso: npm run data:cards
  *
@@ -18,8 +20,15 @@ import { getDb, setMeta } from '../src/lib/server/db.ts';
 const UA = 'manajudge/0.1 (https://github.com/BluHal; prototype)';
 const BULK_INDEX = 'https://api.scryfall.com/bulk-data';
 const OUT = resolve(process.cwd(), 'data/oracle_cards.json');
+const OUT_RULINGS = resolve(process.cwd(), 'data/rulings.json');
 
 type ScryfallFace = { name?: string; oracle_text?: string; mana_cost?: string; type_line?: string };
+type ScryfallRuling = {
+	oracle_id?: string;
+	source?: string; // 'wotc' | 'scryfall'
+	published_at?: string;
+	comment?: string;
+};
 type ScryfallCard = {
 	oracle_id?: string;
 	name: string;
@@ -37,22 +46,22 @@ type ScryfallCard = {
 	card_faces?: ScryfallFace[];
 };
 
-async function resolveDownloadUri(): Promise<string> {
+async function resolveDownloadUri(type: string): Promise<string> {
 	const res = await fetch(BULK_INDEX, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
 	if (!res.ok) throw new Error(`Scryfall bulk index HTTP ${res.status}`);
 	const body = (await res.json()) as { data: Array<{ type: string; download_uri: string }> };
-	const entry = body.data.find((d) => d.type === 'oracle_cards');
-	if (!entry) throw new Error('Bulk type "oracle_cards" non trovato');
+	const entry = body.data.find((d) => d.type === type);
+	if (!entry) throw new Error(`Bulk type "${type}" non trovato`);
 	return entry.download_uri;
 }
 
-async function download(uri: string): Promise<void> {
-	console.log(`↓ Scarico oracle_cards da ${uri}`);
+async function download(uri: string, out: string, label: string): Promise<void> {
+	console.log(`↓ Scarico ${label} da ${uri}`);
 	const res = await fetch(uri, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
-	if (!res.ok || !res.body) throw new Error(`Download oracle_cards HTTP ${res.status}`);
-	await mkdir(resolve(OUT, '..'), { recursive: true });
-	await streamPipeline(Readable.fromWeb(res.body as any), createWriteStream(OUT));
-	console.log(`✓ Salvato in ${OUT}`);
+	if (!res.ok || !res.body) throw new Error(`Download ${label} HTTP ${res.status}`);
+	await mkdir(resolve(out, '..'), { recursive: true });
+	await streamPipeline(Readable.fromWeb(res.body as any), createWriteStream(out));
+	console.log(`✓ Salvato in ${out}`);
 }
 
 /** Costruisce un oracle_text utilizzabile anche per le carte multi-faccia. */
@@ -114,14 +123,49 @@ function importCards(cards: ScryfallCard[]): number {
 	return run(cards);
 }
 
+function importRulings(rulings: ScryfallRuling[]): number {
+	const db = getDb();
+	const ins = db.prepare(
+		'INSERT INTO rulings (oracle_id, source, published_at, comment) VALUES (@oracle_id, @source, @published_at, @comment)'
+	);
+
+	const run = db.transaction((rows: ScryfallRuling[]) => {
+		db.exec('DELETE FROM rulings;');
+		let n = 0;
+		for (const r of rows) {
+			if (!r.oracle_id || !r.comment) continue; // scarta voci senza carta o senza testo
+			ins.run({
+				oracle_id: r.oracle_id,
+				source: r.source ?? null,
+				published_at: r.published_at ?? null,
+				comment: r.comment
+			});
+			n++;
+		}
+		setMeta(db, 'rulings_imported_at', new Date().toISOString());
+		setMeta(db, 'rulings_count', String(n));
+		return n;
+	});
+
+	return run(rulings);
+}
+
 async function main() {
-	const uri = await resolveDownloadUri();
-	await download(uri);
+	const cardsUri = await resolveDownloadUri('oracle_cards');
+	await download(cardsUri, OUT, 'oracle_cards');
 	console.log('Parsing JSON…');
 	const cards = JSON.parse(await readFile(OUT, 'utf8')) as ScryfallCard[];
 	console.log(`Trovate ${cards.length} carte nel bulk. Importo…`);
 	const n = importCards(cards);
 	console.log(`✓ Importate ${n} carte in cards/cards_fts.`);
+
+	const rulingsUri = await resolveDownloadUri('rulings');
+	await download(rulingsUri, OUT_RULINGS, 'rulings');
+	console.log('Parsing JSON…');
+	const rulings = JSON.parse(await readFile(OUT_RULINGS, 'utf8')) as ScryfallRuling[];
+	console.log(`Trovati ${rulings.length} rulings nel bulk. Importo…`);
+	const m = importRulings(rulings);
+	console.log(`✓ Importati ${m} rulings in rulings.`);
 }
 
 main().catch((err) => {

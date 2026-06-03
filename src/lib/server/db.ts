@@ -72,6 +72,17 @@ export function initSchema(db: DB): void {
 			tokenize = 'porter unicode61'
 		);
 
+		-- Rulings ufficiali Scryfall ("Notes and Rules Information"), uno per riga.
+		-- Attaccati alla carta via oracle_id (relazione 1-a-molti): NON sono Comprehensive
+		-- Rules e non passano dal retrieval ibrido, si caricano per le carte citate.
+		CREATE TABLE IF NOT EXISTS rulings (
+			oracle_id    TEXT NOT NULL,             -- carta a cui si riferisce il ruling
+			source       TEXT,                      -- 'wotc' | 'scryfall'
+			published_at TEXT,                       -- data del ruling (ISO, es. "2021-03-19")
+			comment      TEXT NOT NULL              -- testo del chiarimento
+		);
+		CREATE INDEX IF NOT EXISTS idx_rulings_oracle_id ON rulings(oracle_id);
+
 		-- Coppia chiave/valore per metadati (versione CR, data import, ...).
 		CREATE TABLE IF NOT EXISTS meta (
 			key   TEXT PRIMARY KEY,
