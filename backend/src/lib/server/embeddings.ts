@@ -1,10 +1,16 @@
-import { pipeline, type FeatureExtractionPipeline } from '@huggingface/transformers';
+import { env, pipeline, type FeatureExtractionPipeline } from '@huggingface/transformers';
 
 /**
  * Modello di embedding multilingue (locale, gratuito). Mappa testo italiano e inglese
  * nello stesso spazio vettoriale, così una domanda in italiano trova regole in inglese.
  */
 export const EMBED_MODEL = 'Xenova/paraphrase-multilingual-MiniLM-L12-v2';
+
+// In deploy il modello vive su un path persistente/baked (es. il volume Oracle o l'immagine
+// Docker), così non viene riscaricato a ogni boot. In dev resta il default della libreria.
+if (process.env.MODEL_CACHE_DIR) {
+	env.cacheDir = process.env.MODEL_CACHE_DIR;
+}
 
 let _extractor: Promise<FeatureExtractionPipeline> | null = null;
 

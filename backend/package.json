@@ -13,13 +13,15 @@
 		"data:cards": "tsx scripts/fetch-cards.ts",
 		"data:card-vectors": "tsx scripts/index-cards.ts",
 		"data:rules": "tsx scripts/fetch-rules.ts",
+		"prewarm": "tsx scripts/prewarm-model.ts",
+		"start": "node build/index.js",
 		"eval": "tsx scripts/eval.ts",
 		"eval:cards": "tsx scripts/eval-cards.ts",
 		"test": "vitest run",
 		"test:watch": "vitest"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-auto": "^7.0.1",
+		"@sveltejs/adapter-node": "^5.5.4",
 		"@sveltejs/kit": "^2.57.0",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"@types/better-sqlite3": "^7.6.13",

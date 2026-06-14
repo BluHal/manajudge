@@ -1,0 +1,43 @@
+# manajudge Backend — deploy warm, always-on, stateful (ADR 0002).
+# Uso: da backend/ con un .env che contiene almeno GEMINI_API_KEY.
+#   docker compose up -d --build
+# Il DB SQLite persiste nel volume `manajudge-data` (vedi docs/deploy-oracle.md per usare
+# invece un Oracle block volume bind-montato, e per popolare il DB la prima volta).
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: manajudge-backend
+    container_name: manajudge-backend
+    restart: always
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3000'
+      DB_PATH: /app/data/judge.db
+      MODEL_CACHE_DIR: /app/.model-cache
+    volumes:
+      - manajudge-data:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 30s
+      start_period: 180s
+      retries: 3
+
+volumes:
+  manajudge-data:
+    # Per usare un Oracle block volume montato sull'host (es. /mnt/manajudge-data),
+    # sostituisci questo blocco con un bind:
+    #   driver: local
+    #   driver_opts: { type: none, o: bind, device: /mnt/manajudge-data }

@@ -1,0 +1,19 @@
+# Mantieni snello il build context: i runtime e i dati pesanti non vanno nell'immagine.
+node_modules
+.svelte-kit
+build
+.model-cache
+
+# Il DB SQLite + le sorgenti scaricate vivono sul volume persistente, non in immagine.
+data
+
+# Segreti
+.env
+.env.*
+!.env.example
+
+# Rumore
+*.log
+.DS_Store
+.vscode
+.idea

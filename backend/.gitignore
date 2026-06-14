@@ -8,6 +8,9 @@ node_modules
 /.svelte-kit
 /build
 
+# Cache del modello di embedding (baked in immagine al build; vedi MODEL_CACHE_DIR)
+/.model-cache
+
 # OS
 .DS_Store
 Thumbs.db
