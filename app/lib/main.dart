@@ -1,14 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  runApp(const ManajudgeApp());
+import 'features/companion/companion_screen.dart';
+import 'features/companion/new_game_screen.dart';
+import 'state/game_controller.dart';
+import 'state/providers.dart';
+import 'theme/app_theme.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: const ManajudgeApp(),
+    ),
+  );
 }
 
-/// Root of the manajudge companion app.
-///
-/// Phase 0 placeholder: the app builds and launches on Android and iOS but ships
-/// no user-facing behavior yet. The dark theme, design system and the three
-/// surfaces (Companion, Judge, Card Search) arrive in later slices.
+/// Root dell'app manajudge. In Fase 1 ospita la **Companion** (offline); le superfici
+/// Judge e Card Search si agganciano nelle fasi successive, sullo stesso design system.
 class ManajudgeApp extends StatelessWidget {
   const ManajudgeApp({super.key});
 
@@ -17,64 +29,19 @@ class ManajudgeApp extends StatelessWidget {
     return MaterialApp(
       title: 'manajudge',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6E56CF),
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
-      home: const PlaceholderScreen(),
+      theme: AppTheme.dark,
+      home: const CompanionHome(),
     );
   }
 }
 
-class PlaceholderScreen extends StatelessWidget {
-  const PlaceholderScreen({super.key});
-
-  static const _surfaces = <(IconData, String)>[
-    (Icons.casino_outlined, 'Companion'),
-    (Icons.balance_outlined, 'Judge'),
-    (Icons.search_outlined, 'Card Search'),
-  ];
+/// Mostra la schermata di nuovo Game se non c'è una partita attiva, altrimenti la Companion.
+class CompanionHome extends ConsumerWidget {
+  const CompanionHome({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('⚖️ manajudge', style: theme.textTheme.headlineMedium),
-            const SizedBox(height: 8),
-            Text(
-              'Companion app — coming soon',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (final (icon, label) in _surfaces)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      children: [
-                        Icon(icon, size: 32, color: theme.colorScheme.primary),
-                        const SizedBox(height: 8),
-                        Text(label, style: theme.textTheme.labelMedium),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasGame = ref.watch(gameControllerProvider) != null;
+    return hasGame ? const CompanionScreen() : const NewGameScreen();
   }
 }
