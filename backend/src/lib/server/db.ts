@@ -6,6 +6,13 @@ import { mkdirSync } from 'node:fs';
 /** Dimensione degli embedding del modello multilingue (paraphrase-multilingual-MiniLM-L12-v2). */
 export const EMBED_DIM = 384;
 
+/**
+ * Quota free di default (AI Request per periodo) usata per il seed del Plan `free`.
+ * È una proprietà del Plan, tunabile; in v1 (#5) non viene applicata — l'enforcement
+ * server-side arriva con la issue #12.
+ */
+export const DEFAULT_FREE_QUOTA = 50;
+
 /** Percorso del file DB. Sia gli script che il server girano dalla root del progetto. */
 export const DB_PATH = process.env.DB_PATH ?? resolve(process.cwd(), 'data/judge.db');
 
@@ -114,6 +121,44 @@ export function initSchema(db: DB): void {
 			oracle_id TEXT
 		);
 	`);
+
+	// Identità + entitlements (ADR 0002). Ogni AI Request porta un'identità User anonima,
+	// device-scoped; la riga `users` si crea al primo contatto. La Companion non passa mai
+	// di qui. In v1 NESSUNA enforcement: queste tabelle stabiliscono identità + conteggio.
+	db.exec(`
+		-- Piani / entitlement. quota_limit = AI Request concesse per periodo (-1 = illimitato).
+		CREATE TABLE IF NOT EXISTS plans (
+			id            TEXT PRIMARY KEY,           -- 'free' | 'paid'
+			quota_limit   INTEGER NOT NULL,           -- -1 = illimitato
+			reset_cadence TEXT NOT NULL               -- 'monthly' | 'none'
+		);
+
+		-- User anonimo, identificato dal device token. ai_request_count = consumo nel periodo.
+		CREATE TABLE IF NOT EXISTS users (
+			id               TEXT PRIMARY KEY,         -- device token anonimo
+			plan_id          TEXT NOT NULL DEFAULT 'free' REFERENCES plans(id),
+			ai_request_count INTEGER NOT NULL DEFAULT 0,
+			period_start     TEXT NOT NULL,            -- inizio periodo Quota corrente (ISO)
+			created_at       TEXT NOT NULL
+		);
+
+		-- Ledger append-only delle AI Request andate a buon fine (osservabilità/audit).
+		CREATE TABLE IF NOT EXISTS ai_requests (
+			id         INTEGER PRIMARY KEY,
+			user_id    TEXT NOT NULL REFERENCES users(id),
+			surface    TEXT NOT NULL,                  -- 'judge' | 'search'
+			created_at TEXT NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_ai_requests_user ON ai_requests(user_id);
+	`);
+
+	// Seed dei piani (idempotente). Valore della Quota free + cadenza sono proprietà del Plan,
+	// tunabili: default scelto per ora, l'enforcement arriva con la issue #12.
+	const seedPlan = db.prepare(
+		`INSERT INTO plans(id, quota_limit, reset_cadence) VALUES (?, ?, ?) ON CONFLICT(id) DO NOTHING`
+	);
+	seedPlan.run('free', DEFAULT_FREE_QUOTA, 'monthly');
+	seedPlan.run('paid', -1, 'none');
 }
 
 /** Converte un vettore di embedding in BLOB float32 little-endian per sqlite-vec. */

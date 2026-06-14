@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { authHeaders } from '$lib/deviceToken';
+
 	type CardHit = {
 		oracle_id: string;
 		name: string;
@@ -33,7 +35,7 @@
 		try {
 			const res = await fetch('/api/search', {
 				method: 'POST',
-				headers: { 'content-type': 'application/json' },
+				headers: { 'content-type': 'application/json', ...authHeaders() },
 				body: JSON.stringify({ query: q })
 			});
 			const body = await res.json();

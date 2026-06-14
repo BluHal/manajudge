@@ -1,14 +1,23 @@
 import type { RequestHandler } from './$types';
 import { gemini } from '$lib/server/llm/gemini';
 import { runJudge } from '$lib/server/judge';
+import { incrementAiRequest } from '$lib/server/users';
 import type { ChatMessage } from '$lib/server/llm/provider';
 
 /**
  * POST { message, history } -> stream di testo.
  * La PRIMA riga della risposta è un JSON con i metadati (domanda riscritta, confidenza,
  * carte, fonti); tutto ciò che segue la prima newline è la risposta del giudice in streaming.
+ * Ogni turno è una AI Request: richiede l'identità User e incrementa il contatore.
  */
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
+	if (!locals.user) {
+		return new Response(JSON.stringify({ error: 'device token mancante' }), {
+			status: 401,
+			headers: { 'content-type': 'application/json' }
+		});
+	}
+
 	const { message, history } = (await request.json()) as {
 		message: string;
 		history?: ChatMessage[];
@@ -28,6 +37,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			headers: { 'content-type': 'application/json' }
 		});
 	}
+
+	// Generazione avviata con successo = una AI Request per questo turno (#5, nessun gating).
+	incrementAiRequest(locals.user.id, 'judge');
 
 	const meta = {
 		rewritten: result.rewritten,

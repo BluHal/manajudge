@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { authHeaders } from '$lib/deviceToken';
+
 	type Source = { rule_id: string; header_path: string; text: string };
 	type CardRef = { name: string; oracle_text: string | null; type_line: string | null };
 	type Meta = { rewritten: string; confidence: 'alta' | 'media' | 'bassa'; cards: CardRef[]; sources: Source[] };
@@ -36,7 +38,7 @@
 		try {
 			const res = await fetch('/api/chat', {
 				method: 'POST',
-				headers: { 'content-type': 'application/json' },
+				headers: { 'content-type': 'application/json', ...authHeaders() },
 				body: JSON.stringify({ message: text, history })
 			});
 
