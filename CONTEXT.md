@@ -29,3 +29,25 @@ official **oracle text**; resolved by name (no embeddings) and injected into the
 **Oracle text**:
 The current authoritative wording of a **Card**'s abilities. Distinct from a **Ruling**,
 which explains how that text behaves in edge cases.
+
+**Judge**:
+The original manajudge surface: answers a rules/interaction *question* by retrieving **Rule**
+chunks (hybrid retrieval) plus the **oracle text** of cited **Card**s, then *generating* a prose
+answer constrained to those sources. Input is a question; output is a cited answer.
+_Avoid_: calling it "the search" — the Judge generates prose, **Card Search** returns a list.
+
+**Card Search**:
+A distinct surface that retrieves a *ranked list of **Card**s* matching a natural-language query,
+returning real cards from the database (no generated prose, no hallucinated cards). Separate
+corpus (cards, not **Rule**s), separate output shape from the **Judge**. Exposed as a standalone
+service so a future companion app or intent router can call it independently.
+
+**Effect search**:
+The kind of **Card Search** query answered by *semantic similarity of **oracle text*** — "what the
+card does" (e.g. "cards that copy opponents' spells", "ramp without lands"). The v1 scope.
+
+**Synergy search**:
+A **Card Search** query about how a card *plays with others* (e.g. "cards that interact well with
+Murktide Regent"). **Out of scope for v1**: oracle-text similarity does not capture synergy, which
+lives in deck co-occurrence / play patterns, not in the card's wording. Needs a different data
+source (e.g. deck co-occurrence) — not just another vector index.

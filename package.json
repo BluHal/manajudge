@@ -11,8 +11,12 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"data:cards": "tsx scripts/fetch-cards.ts",
+		"data:card-vectors": "tsx scripts/index-cards.ts",
 		"data:rules": "tsx scripts/fetch-rules.ts",
-		"eval": "tsx scripts/eval.ts"
+		"eval": "tsx scripts/eval.ts",
+		"eval:cards": "tsx scripts/eval-cards.ts",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.1",
@@ -24,7 +28,8 @@
 		"svelte-check": "^4.4.6",
 		"tsx": "^4.22.4",
 		"typescript": "^6.0.2",
-		"vite": "^8.0.7"
+		"vite": "^8.0.7",
+		"vitest": "^4.1.8"
 	},
 	"dependencies": {
 		"@google/genai": "^2.7.0",

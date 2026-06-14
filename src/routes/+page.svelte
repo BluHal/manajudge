@@ -86,7 +86,10 @@
 <main>
 	<header>
 		<h1>⚖️ manajudge</h1>
-		<button class="ghost" onclick={reset} disabled={busy || messages.length === 0}>Nuova chat</button>
+		<div class="nav">
+			<a class="ghost" href="/search">🔍 Ricerca carte</a>
+			<button class="ghost" onclick={reset} disabled={busy || messages.length === 0}>Nuova chat</button>
+		</div>
 	</header>
 	<p class="sub">Giudice AI per Magic: The Gathering. Chiedi di regole e interazioni tra carte.</p>
 
@@ -312,6 +315,19 @@
 	button:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+	.nav {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+	a.ghost {
+		color: #0969da;
+		border: 1px solid #d0d7de;
+		border-radius: 10px;
+		padding: 0.35rem 0.75rem;
+		font-size: 0.85rem;
+		text-decoration: none;
 	}
 	button.ghost {
 		background: none;

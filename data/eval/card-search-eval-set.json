@@ -1,0 +1,62 @@
+[
+	{
+		"q": "carte che copiano una magia",
+		"filters": {},
+		"expected_cards": ["Fork", "Twincast", "Reverberate"]
+	},
+	{
+		"q": "distruggi tutte le creature in gioco",
+		"filters": {},
+		"expected_cards": ["Wrath of God", "Damnation", "Day of Judgment", "Supreme Verdict"]
+	},
+	{
+		"q": "infliggi danno diretto a una creatura o a un giocatore",
+		"filters": {},
+		"expected_cards": ["Lightning Bolt", "Shock", "Lava Spike"]
+	},
+	{
+		"q": "contrasta una magia mentre è sullo stack",
+		"filters": {},
+		"expected_cards": ["Counterspell", "Negate", "Cancel"]
+	},
+	{
+		"q": "pesca due o più carte",
+		"filters": {},
+		"expected_cards": ["Divination", "Sign in Blood"]
+	},
+	{
+		"q": "cerca una terra base nella libreria e mettila in gioco",
+		"filters": {},
+		"expected_cards": ["Rampant Growth", "Cultivate", "Kodama's Reach"]
+	},
+	{
+		"q": "distruggi un artefatto o un incantesimo bersaglio",
+		"filters": {},
+		"expected_cards": ["Disenchant", "Naturalize"]
+	},
+	{
+		"q": "riporta una creatura dal cimitero al campo di battaglia",
+		"filters": {},
+		"expected_cards": ["Reanimate", "Animate Dead", "Raise Dead"]
+	},
+	{
+		"q": "crea pedine creatura",
+		"filters": {},
+		"expected_cards": ["Raise the Alarm", "Lingering Souls"]
+	},
+	{
+		"q": "dai +3/+3 a una creatura fino alla fine del turno",
+		"filters": {},
+		"expected_cards": ["Giant Growth"]
+	},
+	{
+		"q": "accelerazione di mana senza usare terre",
+		"filters": { "excludeTypes": ["Land"] },
+		"expected_cards": ["Sol Ring", "Llanowar Elves", "Birds of Paradise", "Mind Stone"]
+	},
+	{
+		"q": "contrasta una magia, carte legali in modern",
+		"filters": { "legalIn": "modern" },
+		"expected_cards": ["Counterspell", "Negate"]
+	}
+]

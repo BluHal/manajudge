@@ -44,6 +44,7 @@ type ScryfallCard = {
 	keywords?: string[];
 	layout?: string;
 	card_faces?: ScryfallFace[];
+	legalities?: Record<string, string>;
 };
 
 async function resolveDownloadUri(type: string): Promise<string> {
@@ -79,15 +80,15 @@ function importCards(cards: ScryfallCard[]): number {
 	const db = getDb();
 	const insCard = db.prepare(`
 		INSERT INTO cards (oracle_id, name, printed_name_it, mana_cost, cmc, type_line, oracle_text,
-			colors, color_identity, power, toughness, loyalty, keywords, layout, card_faces_json)
+			colors, color_identity, power, toughness, loyalty, keywords, layout, card_faces_json, legalities)
 		VALUES (@oracle_id, @name, NULL, @mana_cost, @cmc, @type_line, @oracle_text,
-			@colors, @color_identity, @power, @toughness, @loyalty, @keywords, @layout, @card_faces_json)
+			@colors, @color_identity, @power, @toughness, @loyalty, @keywords, @layout, @card_faces_json, @legalities)
 		ON CONFLICT(oracle_id) DO UPDATE SET
 			name = excluded.name, mana_cost = excluded.mana_cost, cmc = excluded.cmc,
 			type_line = excluded.type_line, oracle_text = excluded.oracle_text, colors = excluded.colors,
 			color_identity = excluded.color_identity, power = excluded.power, toughness = excluded.toughness,
 			loyalty = excluded.loyalty, keywords = excluded.keywords, layout = excluded.layout,
-			card_faces_json = excluded.card_faces_json
+			card_faces_json = excluded.card_faces_json, legalities = excluded.legalities
 	`);
 	const insFts = db.prepare('INSERT INTO cards_fts (name, printed_name_it, oracle_id) VALUES (?, NULL, ?)');
 
@@ -110,7 +111,8 @@ function importCards(cards: ScryfallCard[]): number {
 				loyalty: c.loyalty ?? null,
 				keywords: c.keywords?.join(',') ?? null,
 				layout: c.layout ?? null,
-				card_faces_json: c.card_faces ? JSON.stringify(c.card_faces) : null
+				card_faces_json: c.card_faces ? JSON.stringify(c.card_faces) : null,
+				legalities: c.legalities ? JSON.stringify(c.legalities) : null
 			});
 			insFts.run(c.name, c.oracle_id);
 			n++;

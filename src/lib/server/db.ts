@@ -43,7 +43,8 @@ export function initSchema(db: DB): void {
 			loyalty        TEXT,
 			keywords       TEXT,                   -- CSV
 			layout         TEXT,
-			card_faces_json TEXT                   -- per carte fronte/retro / split
+			card_faces_json TEXT,                  -- per carte fronte/retro / split
+			legalities     TEXT                    -- JSON Scryfall { "modern": "legal", ... }
 		);
 
 		-- Indice full-text per il match fuzzy dei nomi (EN + IT).
@@ -90,11 +91,27 @@ export function initSchema(db: DB): void {
 		);
 	`);
 
-	// Tabella vettoriale (sqlite-vec). Va creata a parte: la dimensione è interpolata.
+	// Migrazione idempotente: aggiunge `legalities` ai DB creati prima della Card Search
+	// (CREATE TABLE IF NOT EXISTS non aggiunge colonne a una tabella già esistente).
+	const cardCols = db.prepare(`PRAGMA table_info(cards)`).all() as Array<{ name: string }>;
+	if (!cardCols.some((c) => c.name === 'legalities')) {
+		db.exec(`ALTER TABLE cards ADD COLUMN legalities TEXT`);
+	}
+
+	// Tabelle vettoriali (sqlite-vec). Vanno create a parte: la dimensione è interpolata.
 	db.exec(`
 		CREATE VIRTUAL TABLE IF NOT EXISTS vec_rules USING vec0(
 			rule_rowid INTEGER PRIMARY KEY,
 			embedding  FLOAT[${EMBED_DIM}]
+		);
+
+		-- Indice vettoriale della Card Search (ricerca per effetto). Multi-vettore: una riga
+		-- per il "core" della carta (type_line + oracle_text) e una per ogni ruling, tutte con
+		-- lo stesso oracle_id (colonna metadata, usata per il filtra-poi-ranka via 'oracle_id IN').
+		-- A query time si fa max-pool per oracle_id. Vedi docs/adr/0001.
+		CREATE VIRTUAL TABLE IF NOT EXISTS vec_cards USING vec0(
+			embedding FLOAT[${EMBED_DIM}],
+			oracle_id TEXT
 		);
 	`);
 }
