@@ -1,0 +1,179 @@
+import Database, { type Database as DB } from 'better-sqlite3';
+import * as sqliteVec from 'sqlite-vec';
+import { resolve } from 'node:path';
+import { mkdirSync } from 'node:fs';
+
+/** Dimensione degli embedding del modello multilingue (paraphrase-multilingual-MiniLM-L12-v2). */
+export const EMBED_DIM = 384;
+
+/**
+ * Quota free di default (AI Request per periodo) usata per il seed del Plan `free`.
+ * È una proprietà del Plan, tunabile; in v1 (#5) non viene applicata — l'enforcement
+ * server-side arriva con la issue #12.
+ */
+export const DEFAULT_FREE_QUOTA = 50;
+
+/** Percorso del file DB. Sia gli script che il server girano dalla root del progetto. */
+export const DB_PATH = process.env.DB_PATH ?? resolve(process.cwd(), 'data/judge.db');
+
+let _db: DB | null = null;
+
+/** Apre (una sola volta) la connessione a judge.db con sqlite-vec caricato. */
+export function getDb(): DB {
+	if (_db) return _db;
+	mkdirSync(resolve(DB_PATH, '..'), { recursive: true });
+	const db = new Database(DB_PATH);
+	db.pragma('journal_mode = WAL');
+	db.pragma('synchronous = NORMAL');
+	sqliteVec.load(db);
+	initSchema(db);
+	_db = db;
+	return db;
+}
+
+/** Crea le tabelle se non esistono. Idempotente. */
+export function initSchema(db: DB): void {
+	db.exec(`
+		-- Carte di gioco uniche (Scryfall oracle_cards). Nessun embedding: lookup per nome.
+		CREATE TABLE IF NOT EXISTS cards (
+			oracle_id      TEXT PRIMARY KEY,
+			name           TEXT NOT NULL,          -- nome inglese (oracle)
+			printed_name_it TEXT,                  -- nome italiano stampato, se esiste
+			mana_cost      TEXT,
+			cmc            REAL,
+			type_line      TEXT,
+			oracle_text    TEXT,
+			colors         TEXT,                   -- es. "W,U"
+			color_identity TEXT,
+			power          TEXT,
+			toughness      TEXT,
+			loyalty        TEXT,
+			keywords       TEXT,                   -- CSV
+			layout         TEXT,
+			card_faces_json TEXT,                  -- per carte fronte/retro / split
+			legalities     TEXT                    -- JSON Scryfall { "modern": "legal", ... }
+		);
+
+		-- Indice full-text per il match fuzzy dei nomi (EN + IT).
+		CREATE VIRTUAL TABLE IF NOT EXISTS cards_fts USING fts5(
+			name, printed_name_it,
+			oracle_id UNINDEXED,
+			tokenize = 'unicode61'
+		);
+
+		-- Regole atomiche delle Comprehensive Rules + voci di glossario.
+		CREATE TABLE IF NOT EXISTS rules (
+			rowid       INTEGER PRIMARY KEY,
+			rule_id     TEXT,                       -- es. "601.2a" oppure "glossary:Deathtouch"
+			parent_id   TEXT,                       -- es. "601.2"
+			kind        TEXT NOT NULL,              -- 'rule' | 'glossary'
+			header_path TEXT,                       -- "601. Casting Spells › 601.2"
+			text        TEXT NOT NULL,
+			refs        TEXT                        -- numeri di regola citati nel testo, CSV
+		);
+		CREATE INDEX IF NOT EXISTS idx_rules_rule_id ON rules(rule_id);
+
+		-- Lato BM25 della ricerca ibrida sulle regole.
+		CREATE VIRTUAL TABLE IF NOT EXISTS rules_fts USING fts5(
+			rule_id, header_path, text,
+			content = 'rules', content_rowid = 'rowid',
+			tokenize = 'porter unicode61'
+		);
+
+		-- Rulings ufficiali Scryfall ("Notes and Rules Information"), uno per riga.
+		-- Attaccati alla carta via oracle_id (relazione 1-a-molti): NON sono Comprehensive
+		-- Rules e non passano dal retrieval ibrido, si caricano per le carte citate.
+		CREATE TABLE IF NOT EXISTS rulings (
+			oracle_id    TEXT NOT NULL,             -- carta a cui si riferisce il ruling
+			source       TEXT,                      -- 'wotc' | 'scryfall'
+			published_at TEXT,                       -- data del ruling (ISO, es. "2021-03-19")
+			comment      TEXT NOT NULL              -- testo del chiarimento
+		);
+		CREATE INDEX IF NOT EXISTS idx_rulings_oracle_id ON rulings(oracle_id);
+
+		-- Coppia chiave/valore per metadati (versione CR, data import, ...).
+		CREATE TABLE IF NOT EXISTS meta (
+			key   TEXT PRIMARY KEY,
+			value TEXT
+		);
+	`);
+
+	// Migrazione idempotente: aggiunge `legalities` ai DB creati prima della Card Search
+	// (CREATE TABLE IF NOT EXISTS non aggiunge colonne a una tabella già esistente).
+	const cardCols = db.prepare(`PRAGMA table_info(cards)`).all() as Array<{ name: string }>;
+	if (!cardCols.some((c) => c.name === 'legalities')) {
+		db.exec(`ALTER TABLE cards ADD COLUMN legalities TEXT`);
+	}
+
+	// Tabelle vettoriali (sqlite-vec). Vanno create a parte: la dimensione è interpolata.
+	db.exec(`
+		CREATE VIRTUAL TABLE IF NOT EXISTS vec_rules USING vec0(
+			rule_rowid INTEGER PRIMARY KEY,
+			embedding  FLOAT[${EMBED_DIM}]
+		);
+
+		-- Indice vettoriale della Card Search (ricerca per effetto). Multi-vettore: una riga
+		-- per il "core" della carta (type_line + oracle_text) e una per ogni ruling, tutte con
+		-- lo stesso oracle_id (colonna metadata, usata per il filtra-poi-ranka via 'oracle_id IN').
+		-- A query time si fa max-pool per oracle_id. Vedi docs/adr/0001.
+		CREATE VIRTUAL TABLE IF NOT EXISTS vec_cards USING vec0(
+			embedding FLOAT[${EMBED_DIM}],
+			oracle_id TEXT
+		);
+	`);
+
+	// Identità + entitlements (ADR 0002). Ogni AI Request porta un'identità User anonima,
+	// device-scoped; la riga `users` si crea al primo contatto. La Companion non passa mai
+	// di qui. In v1 NESSUNA enforcement: queste tabelle stabiliscono identità + conteggio.
+	db.exec(`
+		-- Piani / entitlement. quota_limit = AI Request concesse per periodo (-1 = illimitato).
+		CREATE TABLE IF NOT EXISTS plans (
+			id            TEXT PRIMARY KEY,           -- 'free' | 'paid'
+			quota_limit   INTEGER NOT NULL,           -- -1 = illimitato
+			reset_cadence TEXT NOT NULL               -- 'monthly' | 'none'
+		);
+
+		-- User anonimo, identificato dal device token. ai_request_count = consumo nel periodo.
+		CREATE TABLE IF NOT EXISTS users (
+			id               TEXT PRIMARY KEY,         -- device token anonimo
+			plan_id          TEXT NOT NULL DEFAULT 'free' REFERENCES plans(id),
+			ai_request_count INTEGER NOT NULL DEFAULT 0,
+			period_start     TEXT NOT NULL,            -- inizio periodo Quota corrente (ISO)
+			created_at       TEXT NOT NULL
+		);
+
+		-- Ledger append-only delle AI Request andate a buon fine (osservabilità/audit).
+		CREATE TABLE IF NOT EXISTS ai_requests (
+			id         INTEGER PRIMARY KEY,
+			user_id    TEXT NOT NULL REFERENCES users(id),
+			surface    TEXT NOT NULL,                  -- 'judge' | 'search'
+			created_at TEXT NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_ai_requests_user ON ai_requests(user_id);
+	`);
+
+	// Seed dei piani (idempotente). Valore della Quota free + cadenza sono proprietà del Plan,
+	// tunabili: default scelto per ora, l'enforcement arriva con la issue #12.
+	const seedPlan = db.prepare(
+		`INSERT INTO plans(id, quota_limit, reset_cadence) VALUES (?, ?, ?) ON CONFLICT(id) DO NOTHING`
+	);
+	seedPlan.run('free', DEFAULT_FREE_QUOTA, 'monthly');
+	seedPlan.run('paid', -1, 'none');
+}
+
+/** Converte un vettore di embedding in BLOB float32 little-endian per sqlite-vec. */
+export function toVecBlob(vec: number[] | Float32Array): Buffer {
+	return Buffer.from(new Float32Array(vec).buffer);
+}
+
+export function setMeta(db: DB, key: string, value: string): void {
+	db.prepare('INSERT INTO meta(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(
+		key,
+		value
+	);
+}
+
+export function getMeta(db: DB, key: string): string | undefined {
+	const row = db.prepare('SELECT value FROM meta WHERE key = ?').get(key) as { value: string } | undefined;
+	return row?.value;
+}

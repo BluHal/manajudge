@@ -1,0 +1,37 @@
+# systemd unit per il path SELF-HOST (fallback Cloudflare Tunnel, senza Docker).
+# Avvia il server Node standalone prodotto da `npm run build` (adapter-node) e lo tiene su.
+# Con Docker non serve: `restart: always` + il servizio docker abilitato gestiscono già il boot.
+#
+# Installazione (come root):
+#   cp backend/deploy/manajudge.service /etc/systemd/system/manajudge.service
+#   # adatta User/WorkingDirectory/EnvironmentFile sotto
+#   systemctl daemon-reload && systemctl enable --now manajudge
+#
+# Prerequisiti sulla VM: Node 24+, `npm ci --omit=dev` e `npm run build` già eseguiti in
+# WorkingDirectory, un .env con GEMINI_API_KEY, e il DB su DB_PATH (vedi docs/deploy-oracle.md).
+
+[Unit]
+Description=manajudge Backend (SvelteKit, adapter-node)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=manajudge
+WorkingDirectory=/opt/manajudge/backend
+EnvironmentFile=/opt/manajudge/backend/.env
+Environment=NODE_ENV=production
+Environment=HOST=0.0.0.0
+Environment=PORT=3000
+Environment=DB_PATH=/opt/manajudge/data/judge.db
+Environment=MODEL_CACHE_DIR=/opt/manajudge/backend/.model-cache
+ExecStart=/usr/bin/node build/index.js
+Restart=always
+RestartSec=3
+# Hardening di base
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

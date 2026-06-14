@@ -1,28 +1,13 @@
-node_modules
-
-# Output
-.output
-.vercel
-.netlify
-.wrangler
-/.svelte-kit
-/build
-
 # OS
 .DS_Store
 Thumbs.db
 
-# Data: downloaded sources + built DB are large / regenerable.
-# Keep the versioned eval set.
-/data/*
-!/data/eval/
+# Node (safety net for any root-level tooling; backend has its own)
+node_modules/
 
-# Env
+# Env (safety net; each context keeps its own .env)
 .env
 .env.*
 !.env.example
-!.env.test
 
-# Vite
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
+# Per-context ignores live in backend/.gitignore and app/.gitignore

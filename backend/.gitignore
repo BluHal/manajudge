@@ -1,0 +1,31 @@
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# Cache del modello di embedding (baked in immagine al build; vedi MODEL_CACHE_DIR)
+/.model-cache
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data: downloaded sources + built DB are large / regenerable.
+# Keep the versioned eval set.
+/data/*
+!/data/eval/
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
